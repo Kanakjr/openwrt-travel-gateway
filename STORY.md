@@ -46,8 +46,6 @@ I grabbed my daily driver: a sleek, modern MacBook Pro. It has gorgeous screens,
 [ Modern MacBook Pro ] ──> "Where is the LAN port?!" 🚫
 ```
 
-I stood in my room staring at an Ethernet cable with nothing to plug it into.
-
 Then I remembered: buried in my closet was an ancient, mid-2012 unibody MacBook. It was heavy, ran hot, and its battery had seen better days. But running my hand along its aluminum edge, there it was: **a glorious, native, physical RJ45 Gigabit Ethernet jack.**
 
 ```
@@ -59,12 +57,6 @@ Then I remembered: buried in my closet was an ancient, mid-2012 unibody MacBook.
 ```
 
 I booted up the legacy MacBook, plugged the Ethernet cable directly into the router's LAN port, assigned a static IP, and within minutes, I was flashing the OpenWrt squashfs firmware over TFTP and SSH. That ancient laptop single-handedly rescued the project before it even began.
-
-<p align="center">
-  <img src="assets/macbook-lan-hack.jpg" width="340" alt="The legacy MacBook LAN port hack bootstrapping OpenWrt" />
-  <br>
-  <em>Figure: The legacy unibody MacBook with physical RJ45 Gigabit Ethernet port bootstrapping the TP-Link router alongside the modern MacBook.</em>
-</p>
 
 > 🎥 **Build Walkthrough Video:** The full dual-MacBook setup and flashing sequence is recorded in [`assets/build-setup-video.mp4`](assets/build-setup-video.mp4).
 
