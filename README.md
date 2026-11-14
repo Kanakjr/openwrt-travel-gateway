@@ -8,65 +8,41 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 <p align="center">
-  <img src="assets/hero-router.jpg" width="460" alt="OpenWrt Travel Gateway Hardware" style="border-radius: 12px; box-shadow: 0 4px 25px rgba(0,0,0,0.4);" />
+  <img src="assets/architecture.jpg" width="100%" alt="Architecture: hotel devices connect to the OpenWrt travel router, which tunnels over WireGuard on IPv6 to a Mac Mini at home" />
 </p>
 
 ---
 
-## 📌 The Problem: Remote Work vs. Real World
+## 📌 Why
 
-When you travel as a software engineer or remote worker, you run into two constant friction points:
+Corporate SSO and security tools flag logins from hotel Wi-Fi, commercial VPNs, and cloud IP ranges. They expect traffic from your home ISP. This project puts one private hotspot in your bag and sends every device's traffic home first:
 
-1. **Workplace Geo-Restrictions & Security Checks:** Many corporate systems flag sudden IP location changes or untrusted commercial VPN subnets (AWS/DigitalOcean/NordVPN). They expect your traffic to originate from your verified home residential ISP.
-2. **Untrusted Hotel & Public Wi-Fi:** Connecting work laptops directly to hotel, airport, or coffee shop networks exposes them to MITM attacks, DNS spoofing, and restrictive network firewalls.
-3. **Clunky Router Interfaces:** Connecting an OpenWrt router to hotel Wi-Fi usually means logging into LuCI on a cramped phone screen, clicking through multiple network tabs, and fiddling with interface bindings.
+```
+Phone / laptop ──Wi-Fi──▶ Travel router ──WireGuard over IPv6──▶ Home Mac Mini ──▶ Internet
+                          (joins hotel Wi-Fi)                     (home IP address)
+```
+
+IPv6 avoids home ISP CGNAT, so you don't need a VPS, Cloudflare Tunnel, or port forwarding on IPv4.
+
+### ✨ Features
+- **Home IP everywhere:** every device on the hotspot uses your home connection.
+- **1-tap modes:** Home VPN (WireGuard), Tor, or direct hotel Wi-Fi.
+- **Wi-Fi scanner:** pick the hotel network from your phone, with signal bars.
+- **Captive-portal detection:** Android and iOS show "Sign in to network," which opens the portal.
+- **5.6 KB UI:** one HTML file, gzipped, with a 2 KB shell CGI backend.
+- **Fits tiny routers:** tested on an Archer C6 v2 (128 MB RAM, 384 KiB overlay). WireGuard runs in the kernel and is loaded into RAM on demand.
+
+> **Requirement:** the tunnel runs over IPv6, so both your home connection and the upstream network need IPv6. On IPv4-only networks, use direct or Tor mode.
+
+| 1-tap portal | Dual-stack upstream | 128 MB RAM, 384 KiB overlay |
+|:---:|:---:|:---:|
+| <img src="assets/portal-mobile-dashboard.jpg" width="240" alt="Mobile portal" /> | <img src="assets/openwrt-network-status.jpg" width="240" alt="Network status" /> | <img src="assets/openwrt-system-specs.png" width="240" alt="System specs" /> |
 
 ---
 
-## 💡 The Solution: Pocket Residential Gateway
+## 📖 The Story
 
-**OpenWrt Travel Gateway** repurposes any low-cost router (even with strict hardware limits like 128 MB RAM and under 100 KB free flash) into a dedicated travel companion:
-
-```
-[ Phone / Work Laptop ]
-           │
-           │ (Connects to private 5 GHz Wi-Fi Hotspot)
-           ▼
-[ OpenWrt Travel Router ] ── (2.4 GHz STA joins Hotel / Airport Wi-Fi)
-           │
-           │ Direct Kernel WireGuard Tunnel (`wireguard.ko`) over IPv6
-           │ (Bypasses ISP CGNAT naturally with line-rate wire speed)
-           ▼
-[ Home Host / Mac Mini ] ── (Residential Fiber Broadband Connection)
-           │
-           ▼
-  [ Public Internet ] ── (Sees your home residential IP everywhere!)
-```
-
-### ✨ Key Features
-- **🏠 Residential IP Everywhere:** All client devices connected to your travel hotspot egress through your home residential broadband connection.
-- **🔍 Mobile-First Wi-Fi Scanner:** 1-tap scan of nearby hotel networks with signal bars and instant connection prompt.
-- **🔄 1-Tap Gateway Switcher:** Toggle instantly between:
-  - 🏠 **Home Mac Mini VPN:** Direct WireGuard tunnel.
-  - 🧅 **Tor Anonymous Gateway:** Transparent onion routing.
-  - 🌐 **Direct Hotel WAN:** Standard repeater mode.
-- **📱 RFC Captive Portal Detection:** When you arrive at a hotel without internet, Android and iOS automatically display the "Sign-in to network" notification, opening the portal directly in the system webview.
-- **⚡ Zero-Dependency 5.6 KB UI:** Single-file HTML/CSS/JS gzipped to 5.6 KB. Loads in under 50 ms directly from RAM.
-- **💻 Ultra-Constrained Hardware Ready:** Built and tested on real-world legacy hardware (TP-Link Archer C6 v2, Qualcomm Atheros QCA956X, 128 MB RAM, 384 KiB overlay flash). Operates seamlessly with ~0 MB userspace memory overhead.
-
-<p align="center">
-  <img src="assets/portal-mobile-dashboard.jpg" width="340" alt="Travel Gateway Mobile Dashboard" style="border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);" />
-  <br>
-  <em>Mobile portal running live at http://travel.lan for 1-tap gateway switching and nearby Wi-Fi joining.</em>
-</p>
-
----
-
-## 📖 The Story Behind This Project
-
-For the complete narrative detailing how this project came to life—including the **old MacBook LAN port hack**, the **Cloudflare Tunnel OOM crash**, and the **IPv6 discovery**—read the full chronicle:
-
-👉 **[Read the Full Story: From Discarded Router to Global Travel Gateway](STORY.md)**
+How it was built, including an old MacBook with an Ethernet port, a Cloudflare Tunnel that ran out of memory, and the switch to IPv6. Read the **[blog post](https://kanakjr.in/blog/openwrt-travel-gateway)** or **[STORY.md](STORY.md)**.
 
 ---
 
@@ -85,10 +61,7 @@ For the complete narrative detailing how this project came to life—including t
    ```
 
 ### 2. Router Setup (OpenWrt)
-1. Ensure WireGuard kernel modules are available:
-   ```sh
-   opkg update && opkg install kmod-wireguard wireguard-tools
-   ```
+1. No WireGuard install step on flash is needed. `hotspot-mode` downloads `kmod-wireguard` and `wireguard-tools` into RAM (`/tmp`) with `apk` the first time VPN mode is switched on, which leaves room on routers with very little free flash. The router needs internet access (via the upstream Wi-Fi) for that first download after each boot.
 2. Configure `/etc/wireguard/wg0.conf` on the router:
    ```ini
    [Interface]
@@ -110,7 +83,7 @@ For the complete narrative detailing how this project came to life—including t
 1. Power on your travel router in your hotel room.
 2. Connect your phone or laptop to your private hotspot Wi-Fi.
 3. Open **`http://travel.lan`** (or **`http://10.8.0.2`**).
-4. Tap **Scan & Join Wi-Fi** $\rightarrow$ select your hotel Wi-Fi $\rightarrow$ tap **Home Mac Mini VPN**.
+4. Tap **Scan & Join Wi-Fi**, select your hotel Wi-Fi, then tap **Home Mac Mini VPN**.
 5. All your devices are now safely browsing through your home connection!
 
 ---
