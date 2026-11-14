@@ -1,0 +1,24 @@
+#!/bin/sh
+# Captive portal redirection hook
+if echo "$REQUEST_URI" | grep -qi "generate_204"; then
+    if iw dev phy1-sta0 link 2>/dev/null | grep -q 'Connected' && ping -c 1 -W 1 10.8.0.1 >/dev/null 2>&1; then
+        echo "Status: 204 No Content"
+        echo ""
+        exit 0
+    fi
+fi
+
+if echo "$REQUEST_URI" | grep -qi "hotspot-detect"; then
+    if iw dev phy1-sta0 link 2>/dev/null | grep -q 'Connected' && ping -c 1 -W 1 10.8.0.1 >/dev/null 2>&1; then
+        echo "Content-Type: text/html"
+        echo ""
+        echo "<HTML><HEAD><TITLE>Success</TITLE></HEAD><BODY>Success</BODY></HTML>"
+        exit 0
+    fi
+fi
+
+echo "Status: 302 Found"
+echo "Location: http://10.8.0.2/"
+echo "Content-Type: text/html"
+echo ""
+echo '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0; url=http://10.8.0.2/"></head><body><a href="http://10.8.0.2/">Open Travel Gateway</a></body></html>'

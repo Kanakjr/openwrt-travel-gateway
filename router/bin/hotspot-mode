@@ -1,0 +1,195 @@
+#!/bin/sh
+# ==============================================================================
+# OpenWrt Travel Router - Gateway Routing Mode Switcher
+# Modes: VPN (Home WireGuard) | TOR (Anonymous Gateway) | NORMAL (Direct Hotel WAN)
+# ==============================================================================
+
+MODE_FILE="/etc/hotspot_mode"
+
+ensure_tor() {
+    if [ ! -x /tmp/tor_run/usr/sbin/tor ]; then
+        echo "[*] Installing Tor into router RAM (/tmp)..."
+        mkdir -p /tmp/tor_run/etc/apk
+        echo "mips_24kc" > /tmp/tor_run/etc/apk/arch
+        cp -r /etc/apk/keys /tmp/tor_run/etc/apk/ 2>/dev/null
+        apk add -p /tmp/tor_run --initdb --no-scripts --repositories-file /etc/apk/repositories.d/distfeeds.list tor-basic >/dev/null 2>&1
+        if [ ! -x /tmp/tor_run/usr/sbin/tor ]; then
+            echo "[-] ERROR: Failed to install Tor in RAM."
+            return 1
+        fi
+    fi
+    return 0
+}
+
+ensure_wireguard() {
+    if ! lsmod | grep -q wireguard; then
+        if [ ! -f /tmp/wg_run/lib/modules/$(uname -r)/wireguard.ko ]; then
+            echo "[*] Installing WireGuard kernel module into router RAM (/tmp)..."
+            mkdir -p /tmp/wg_run/etc/apk
+            echo "mips_24kc" > /tmp/wg_run/etc/apk/arch
+            cp -r /etc/apk/keys /tmp/wg_run/etc/apk/ 2>/dev/null
+            apk add -p /tmp/wg_run --initdb --no-scripts --repositories-file /etc/apk/repositories.d/distfeeds.list kmod-wireguard wireguard-tools >/dev/null 2>&1
+        fi
+        
+        MODDIR="/tmp/wg_run/lib/modules/$(uname -r)"
+        for mod in chacha-mips.ko poly1305-mips.ko libchacha20poly1305.ko kpp.ko libcurve25519-generic.ko libcurve25519.ko udp_tunnel.ko ip6_udp_tunnel.ko wireguard.ko; do
+            [ -f "$MODDIR/$mod" ] && insmod "$MODDIR/$mod" 2>/dev/null
+        done
+        
+        if ! lsmod | grep -q wireguard; then
+            echo "[-] ERROR: WireGuard kernel module could not be loaded."
+            return 1
+        fi
+    fi
+    return 0
+}
+
+stop_tor() {
+    echo "[*] Stopping Tor..."
+    nft delete table inet tor_redirect 2>/dev/null
+    if [ -f /tmp/tor/tor.pid ]; then
+        kill $(cat /tmp/tor/tor.pid) 2>/dev/null
+        rm -f /tmp/tor/tor.pid
+    fi
+    killall tor 2>/dev/null
+}
+
+stop_vpn() {
+    echo "[*] Stopping WireGuard VPN..."
+    nft delete table inet vpn_nat 2>/dev/null
+    ip rule del iif br-lan to 192.168.1.0/24 lookup main priority 90 2>/dev/null
+    ip rule del iif br-lan to 10.8.0.0/24 lookup main priority 91 2>/dev/null
+    ip rule del iif br-lan table 100 2>/dev/null
+    ip route flush table 100 2>/dev/null
+    ip link delete wg0 2>/dev/null
+}
+
+start_normal() {
+    stop_tor
+    stop_vpn
+    echo "NORMAL" > "$MODE_FILE"
+    echo "=========================================="
+    echo " Mode: NORMAL"
+    echo " Hotspot traffic routes directly out WAN."
+    echo "=========================================="
+}
+
+start_tor() {
+    stop_vpn
+    ensure_tor || return 1
+    
+    echo "[*] Starting Tor transparent proxy..."
+    mkdir -p /tmp/tor/data
+    cat << 'EOF' > /tmp/tor/torrc
+DataDirectory /tmp/tor/data
+PidFile /tmp/tor/tor.pid
+Log notice file /tmp/tor/tor.log
+User root
+SocksPort 192.168.1.1:9050
+TransPort 192.168.1.1:9040
+DNSPort 192.168.1.1:9053
+VirtualAddrNetworkIPv4 10.192.0.0/10
+AutomapHostsOnResolve 1
+EOF
+
+    LD_LIBRARY_PATH=/tmp/tor_run/usr/lib:/tmp/tor_run/lib /tmp/tor_run/usr/sbin/tor -f /tmp/tor/torrc --runasdaemon 1
+    
+    echo -n "[*] Waiting for Tor bootstrap"
+    i=0
+    while [ $i -lt 35 ]; do
+        if grep -q "Bootstrapped 100%" /tmp/tor/tor.log 2>/dev/null; then
+            echo " [Done]"
+            break
+        fi
+        echo -n "."
+        sleep 1
+        i=$((i + 1))
+    done
+
+    nft 'add table inet tor_redirect; add chain inet tor_redirect prerouting { type nat hook prerouting priority -110; policy accept; }; add rule inet tor_redirect prerouting iifname "br-lan" udp dport 53 redirect to :9053; add rule inet tor_redirect prerouting iifname "br-lan" tcp dport 53 redirect to :9053; add rule inet tor_redirect prerouting iifname "br-lan" ip daddr != { 10.0.0.0/8, 127.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } meta l4proto tcp redirect to :9040;'
+    
+    echo "TOR" > "$MODE_FILE"
+    echo "=========================================="
+    echo " Mode: TOR ANONYMOUS GATEWAY"
+    echo " Hotspot traffic is transparently routed via Tor."
+    echo "=========================================="
+}
+
+start_vpn() {
+    stop_tor
+    ensure_wireguard || return 1
+    
+    CONF="/etc/wireguard/wg0.conf"
+    if [ ! -f "$CONF" ]; then
+        echo "[-] ERROR: $CONF does not exist. Please configure /etc/wireguard/wg0.conf first."
+        return 1
+    fi
+    
+    echo "[*] Activating WireGuard client to Home Host..."
+    ip link delete wg0 2>/dev/null
+    ip link add dev wg0 type wireguard 2>/dev/null
+    grep -v '^Address' "$CONF" > /tmp/wg_stripped.conf
+    LD_LIBRARY_PATH=/tmp/wg_run/usr/lib /tmp/wg_run/usr/bin/wg setconf wg0 /tmp/wg_stripped.conf
+    ip address add 10.8.0.2/24 dev wg0 2>/dev/null
+    ip link set mtu 1380 dev wg0 2>/dev/null
+    ip link set up dev wg0
+    
+    # Assign wg0 to WAN firewall zone
+    if ! uci get firewall.@zone[1].device 2>/dev/null | grep -q 'wg0'; then
+        uci add_list firewall.@zone[1].device='wg0'
+        uci commit firewall
+        /etc/init.d/firewall reload
+    fi
+    
+    # Policy Routing: Direct all client traffic out wg0, preserve local LAN access
+    ip route add default dev wg0 table 100 2>/dev/null
+    ip rule del iif br-lan to 192.168.1.0/24 lookup main priority 90 2>/dev/null
+    ip rule add iif br-lan to 192.168.1.0/24 lookup main priority 90 2>/dev/null
+    ip rule del iif br-lan to 10.8.0.0/24 lookup main priority 91 2>/dev/null
+    ip rule add iif br-lan to 10.8.0.0/24 lookup main priority 91 2>/dev/null
+    ip rule del iif br-lan table 100 2>/dev/null
+    ip rule add iif br-lan table 100 priority 100 2>/dev/null
+    
+    echo "VPN" > "$MODE_FILE"
+    echo "=========================================="
+    echo " Mode: HOME RESIDENTIAL VPN (WireGuard)"
+    echo " Hotspot traffic routed through Home Broadband."
+    echo "=========================================="
+    sleep 1
+    [ -x /tmp/wg_run/usr/bin/wg ] && LD_LIBRARY_PATH=/tmp/wg_run/usr/lib /tmp/wg_run/usr/bin/wg show wg0
+}
+
+show_status() {
+    MODE="NORMAL"
+    [ -f "$MODE_FILE" ] && MODE=$(cat "$MODE_FILE")
+    
+    echo "=========================================="
+    echo " Current Gateway Mode: [ $MODE ]"
+    echo "=========================================="
+    
+    if [ -f /tmp/tor/tor.pid ] && kill -0 $(cat /tmp/tor/tor.pid) 2>/dev/null; then
+        BOOTSTRAP=$(grep -o "Bootstrapped [0-9]*%" /tmp/tor/tor.log 2>/dev/null | tail -n 1)
+        echo " Tor Daemon: RUNNING ($BOOTSTRAP)"
+    else
+        echo " Tor Daemon: STOPPED"
+    fi
+    
+    if ip link show wg0 >/dev/null 2>&1; then
+        echo " WireGuard wg0: UP"
+        [ -x /tmp/wg_run/usr/bin/wg ] && LD_LIBRARY_PATH=/tmp/wg_run/usr/lib /tmp/wg_run/usr/bin/wg show wg0
+    else
+        echo " WireGuard wg0: DOWN"
+    fi
+    echo "=========================================="
+}
+
+case "$1" in
+    normal) start_normal ;;
+    tor) start_tor ;;
+    vpn) start_vpn ;;
+    status|"") show_status ;;
+    *)
+        echo "Usage: $0 {normal|tor|vpn|status}"
+        exit 1
+        ;;
+esac

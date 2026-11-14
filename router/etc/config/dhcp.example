@@ -1,0 +1,34 @@
+# OpenWrt DHCP & Dnsmasq Configuration (/etc/config/dhcp)
+
+config dnsmasq
+	option domainneeded '1'
+	option boguspriv '1'
+	option localise_queries '1'
+	option rebind_protection '1'
+	option rebind_localhost '1'
+	option local '/lan/'
+	option domain 'lan'
+	option expandhosts '1'
+	option authoritative '1'
+	option leasefile '/tmp/dhcp.leases'
+	option filter_aaaa '1'
+
+	# Local friendly aliases
+	list address '/travel.lan/10.8.0.2'
+	list address '/portal.lan/10.8.0.2'
+
+	# Captive portal detection probe domain intercepts
+	list address '/connectivitycheck.gstatic.com/10.8.0.2'
+	list address '/connectivitycheck.android.com/10.8.0.2'
+	list address '/clients3.google.com/10.8.0.2'
+	list address '/captive.apple.com/10.8.0.2'
+	list address '/msftconnecttest.com/10.8.0.2'
+
+config dhcp 'lan'
+	option interface 'lan'
+	option start '100'
+	option limit '150'
+	option leasetime '12h'
+	option dhcpv4 'server'
+	option dhcpv6 'disabled'
+	list dhcp_option '6,192.168.1.1'

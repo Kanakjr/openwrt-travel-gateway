@@ -1,0 +1,21 @@
+# WireGuard Server Configuration Template (Home Server / Mac Mini)
+# Save as: /opt/homebrew/etc/wireguard/wg0.conf (macOS) or /etc/wireguard/wg0.conf (Linux)
+
+[Interface]
+# Tunnel network for VPN server and clients
+Address = 10.8.0.1/24, fd42:42:42::1/64
+ListenPort = 51820
+PrivateKey = <YOUR_SERVER_PRIVATE_KEY>
+
+# macOS PostUp: Enable packet forwarding and load PF NAT rules out primary interface (e.g. en0)
+PostUp = sysctl -w net.inet.ip.forwarding=1 net.inet6.ip6.forwarding=1; printf "nat on en0 from 10.8.0.0/24 to any -> (en0)\npass quick all\n" | pfctl -a com.apple/wireguard -f - 2>/dev/null; pfctl -e 2>/dev/null || true
+PostDown = pfctl -a com.apple/wireguard -F all 2>/dev/null || true
+
+# For Linux (iptables alternative):
+# PostUp = iptables -A FORWARD -i %i -j ACCEPT; iptables -A FORWARD -o %i -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+# PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+
+[Peer]
+# OpenWrt Travel Router Client
+PublicKey = <YOUR_TRAVEL_ROUTER_CLIENT_PUBLIC_KEY>
+AllowedIPs = 10.8.0.2/32, fd42:42:42::2/128

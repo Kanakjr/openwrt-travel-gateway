@@ -1,0 +1,33 @@
+# OpenWrt Wireless Configuration Template (/etc/config/wireless)
+
+# 5GHz Radio - Private Travel Hotspot for your Devices
+config wifi-device 'radio0'
+	option type 'mac80211'
+	option band '5g'
+	option channel '36'
+	option htmode 'VHT80'
+	option cell_density '0'
+
+config wifi-iface 'default_radio0'
+	option device 'radio0'
+	option network 'lan'
+	option mode 'ap'
+	option ssid 'TravelGateway-5G'
+	option encryption 'psk2'
+	option key 'ChangeMeNow123!'
+
+# 2.4GHz Radio - Upstream Client (Joins Hotel / Cafe / Airport Wi-Fi)
+config wifi-device 'radio1'
+	option type 'mac80211'
+	option band '2g'
+	option channel 'auto'
+	option htmode 'HT20'
+	option cell_density '0'
+
+config wifi-iface 'wifinet2'
+	option device 'radio1'
+	option mode 'sta'
+	option network 'wwan'
+	option ssid '<HOTEL_OR_UPSTREAM_SSID>'
+	option encryption 'psk2'
+	option key '<HOTEL_WIFI_PASSWORD>'

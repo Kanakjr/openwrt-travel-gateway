@@ -1,0 +1,32 @@
+# OpenWrt Network Configuration Template (/etc/config/network)
+
+config interface 'loopback'
+	option device 'lo'
+	option proto 'static'
+	option ipaddr '127.0.0.1'
+	option netmask '255.0.0.0'
+
+config interface 'lan'
+	option device 'br-lan'
+	option proto 'static'
+	option ipaddr '192.168.1.1'
+	option netmask '255.255.255.0'
+
+# Upstream Wi-Fi Client WAN Interface
+config interface 'wwan'
+	option proto 'dhcp'
+
+# WireGuard Client Tunnel Interface to Home Host
+config interface 'wg0'
+	option proto 'wireguard'
+	option private_key '<YOUR_TRAVEL_ROUTER_CLIENT_PRIVATE_KEY>'
+	list addresses '10.8.0.2/24'
+
+config wireguard_wg0 'wgclient'
+	option public_key '<YOUR_HOME_SERVER_PUBLIC_KEY>'
+	option endpoint_host '<YOUR_HOME_PUBLIC_IPV6_OR_DDNS>'
+	option endpoint_port '51820'
+	option persistent_keepalive '25'
+	option route_allowed_ips '0'
+	list allowed_ips '0.0.0.0/0'
+	list allowed_ips '::/0'

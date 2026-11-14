@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Travel Router">
+  <link rel="apple-touch-icon" href="/luci-static/bootstrap/logo_48.png">
+  <link rel="icon" type="image/png" href="/luci-static/bootstrap/logo_48.png">
+  <title>Travel Gateway</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --vpn-color: #8b5cf6;
+      --tor-color: #d97706;
+      --radius: 14px;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f1f5f9;
+        --card-bg: #ffffff;
+        --card-border: #e2e8f0;
+        --text: #0f172a;
+        --text-muted: #64748b;
+        --accent: #2563eb;
+        --accent-hover: #1d4ed8;
+      }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
+    body { background: var(--bg); color: var(--text); min-height: 100vh; padding: 16px; padding-bottom: 40px; display: flex; justify-content: center; }
+    .container { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 16px; }
+    
+    /* Header */
+    header { display: flex; justify-content: space-between; align-items: center; padding: 4px 2px; }
+    .brand { display: flex; align-items: center; gap: 10px; font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; }
+    .brand-icon { font-size: 1.5rem; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 10px; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; }
+    .mode-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; background: rgba(59, 130, 246, 0.15); color: var(--accent); border: 1px solid rgba(59, 130, 246, 0.3); }
+    .mode-pill.vpn { background: rgba(139, 92, 246, 0.15); color: #a78bfa; border-color: rgba(139, 92, 246, 0.4); }
+    .mode-pill.tor { background: rgba(217, 119, 6, 0.15); color: #fbbf24; border-color: rgba(217, 119, 6, 0.4); }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.85); } }
+
+    /* Cards */
+    .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius); padding: 18px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+    .card-title { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+    
+    /* Upstream Wi-Fi */
+    .wifi-status { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .wifi-info { display: flex; flex-direction: column; gap: 4px; }
+    .wifi-ssid { font-size: 1.2rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .wifi-meta { font-size: 0.8rem; color: var(--text-muted); display: flex; gap: 10px; align-items: center; }
+    .btn-row { display: flex; gap: 10px; }
+    .btn { flex: 1; padding: 11px 14px; border-radius: 10px; font-size: 0.9rem; font-weight: 600; border: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.15s ease; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:active { background: var(--accent-hover); transform: scale(0.98); }
+    .btn-secondary { background: rgba(255, 255, 255, 0.06); color: var(--text); border: 1px solid var(--card-border); }
+    .btn-secondary:active { background: rgba(255, 255, 255, 0.12); }
+    
+    /* Routing Modes */
+    .mode-group { display: flex; flex-direction: column; gap: 10px; }
+    .mode-option { border: 2px solid var(--card-border); border-radius: 12px; padding: 14px; cursor: pointer; display: flex; align-items: flex-start; gap: 12px; transition: all 0.2s ease; background: rgba(255,255,255,0.02); }
+    .mode-option:hover { border-color: rgba(255,255,255,0.25); }
+    .mode-option.active { border-color: var(--accent); background: rgba(59, 130, 246, 0.08); }
+    .mode-option.active.vpn-card { border-color: var(--vpn-color); background: rgba(139, 92, 246, 0.09); }
+    .mode-option.active.tor-card { border-color: var(--tor-color); background: rgba(217, 119, 6, 0.09); }
+    .mode-icon { font-size: 1.4rem; padding-top: 2px; }
+    .mode-details { flex: 1; }
+    .mode-name { font-size: 1rem; font-weight: 700; margin-bottom: 2px; display: flex; align-items: center; justify-content: space-between; }
+    .mode-desc { font-size: 0.8rem; color: var(--text-muted); line-height: 1.3; }
+    .mode-stats { margin-top: 8px; font-size: 0.75rem; background: rgba(0,0,0,0.2); padding: 6px 10px; border-radius: 6px; display: flex; justify-content: space-between; color: var(--text-muted); }
+    .check-mark { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--card-border); display: flex; align-items: center; justify-content: center; }
+    .mode-option.active .check-mark { border-color: currentColor; background: currentColor; }
+    .mode-option.active .check-mark::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--card-bg); }
+
+    /* Client List */
+    .client-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+    .client-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-radius: 8px; background: rgba(255,255,255,0.03); font-size: 0.85rem; border: 1px solid rgba(255,255,255,0.05); }
+    .client-name { font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .client-ip { color: var(--text-muted); font-size: 0.75rem; font-family: monospace; }
+
+    /* Modal / Drawer */
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.65); backdrop-filter: blur(4px); display: none; align-items: flex-end; justify-content: center; z-index: 100; }
+    .modal-backdrop.open { display: flex; }
+    .modal-sheet { background: var(--card-bg); border-top: 1px solid var(--card-border); border-radius: 20px 20px 0 0; width: 100%; max-width: 480px; max-height: 85vh; padding: 20px; display: flex; flex-direction: column; gap: 14px; animation: slideUp 0.25s ease; }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; }
+    .modal-title { font-size: 1.15rem; font-weight: 700; }
+    .close-btn { background: none; border: none; font-size: 1.3rem; color: var(--text-muted); cursor: pointer; padding: 4px; }
+    .wifi-list { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px; max-height: 50vh; }
+    .scan-item { padding: 12px; border-radius: 10px; border: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.15s; }
+    .scan-item:hover, .scan-item:active { background: rgba(255,255,255,0.06); }
+    .scan-meta { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--text-muted); }
+    .input-group { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+    .input-label { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); }
+    .input-field { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--card-border); background: rgba(0,0,0,0.25); color: var(--text); font-size: 1rem; outline: none; }
+    .input-field:focus { border-color: var(--accent); }
+
+    /* Footer */
+    footer { text-align: center; font-size: 0.8rem; color: var(--text-muted); margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+    footer a { color: var(--text-muted); text-decoration: underline; }
+    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: #fff; padding: 10px 20px; border-radius: 999px; font-size: 0.85rem; font-weight: 600; border: 1px solid #475569; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.4); display: none; z-index: 200; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="brand">
+        <div class="brand-icon">✈️</div>
+        <span>Travel Gateway</span>
+      </div>
+      <div id="modePill" class="mode-pill vpn">
+        <span class="dot"></span>
+        <span id="modePillText">Mac Mini VPN</span>
+      </div>
+    </header>
+
+    <!-- Card 1: Upstream Internet / Hotel Wi-Fi -->
+    <div class="card">
+      <div class="card-title">
+        <span>Upstream Wi-Fi (Hotel / WAN)</span>
+        <span id="upstreamStatusBadge" style="font-size:0.75rem; color:var(--success);">● Connected</span>
+      </div>
+      <div class="wifi-status">
+        <div class="wifi-info">
+          <div class="wifi-ssid" id="upstreamSsid">Anjali</div>
+          <div class="wifi-meta">
+            <span id="upstreamIp">192.168.31.46</span>
+            <span>•</span>
+            <span id="upstreamSignal">📶 -33 dBm</span>
+          </div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="openScanner()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><path d="M2 12h20"/></svg>
+          Scan & Join Wi-Fi
+        </button>
+        <button class="btn btn-secondary" onclick="openHotelLogin()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Hotel Login
+        </button>
+      </div>
+    </div>
+
+    <!-- Card 2: Routing Mode Switcher -->
+    <div class="card">
+      <div class="card-title">
+        <span>Routing Mode</span>
+        <span style="font-size:0.75rem; color:var(--text-muted);">1-Tap Switch</span>
+      </div>
+      <div class="mode-group">
+        <!-- Option 1: WireGuard Home Mac Mini -->
+        <div id="modeVpnCard" class="mode-option vpn-card active" onclick="switchMode('vpn')">
+          <div class="mode-icon">🏠</div>
+          <div class="mode-details">
+            <div class="mode-name">
+              <span>Home Mac Mini VPN</span>
+              <div class="check-mark"></div>
+            </div>
+            <div class="mode-desc">Routes all traffic through your home residential broadband.</div>
+            <div class="mode-stats" id="vpnStats">
+              <span>Handshake: <b id="wgHandshake">12s ago</b></span>
+              <span><b id="wgTransfer">38.0 MB in / 28.3 MB out</b></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Option 2: Tor Anonymous Gateway -->
+        <div id="modeTorCard" class="mode-option tor-card" onclick="switchMode('tor')">
+          <div class="mode-icon">🧅</div>
+          <div class="mode-details">
+            <div class="mode-name">
+              <span>Tor Anonymous Gateway</span>
+              <div class="check-mark"></div>
+            </div>
+            <div class="mode-desc">Transparent onion routing for all connected devices.</div>
+          </div>
+        </div>
+
+        <!-- Option 3: Direct WAN -->
+        <div id="modeNormalCard" class="mode-option" onclick="switchMode('normal')">
+          <div class="mode-icon">🌐</div>
+          <div class="mode-details">
+            <div class="mode-name">
+              <span>Direct Hotel Wi-Fi (Normal)</span>
+              <div class="check-mark"></div>
+            </div>
+            <div class="mode-desc">Direct hotel connection without encryption tunnel or proxy.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 3: Hotspot & Connected Clients -->
+    <div class="card">
+      <div class="card-title">
+        <span>Wi-Fi Hotspot Clients</span>
+        <span id="clientCountBadge" style="font-size:0.75rem; color:var(--accent);">2 Devices</span>
+      </div>
+      <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom: 8px;">
+        Broadcasting: <b id="hotspotSsidName" style="color:var(--text);">OpenWrt</b> (5 GHz)
+      </div>
+      <div class="client-list" id="clientListContainer">
+        <!-- Populated via API -->
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+      <div id="sysStats">Uptime: 5h 25m • Free RAM: 26 MB</div>
+      <div><a href="/cgi-bin/luci/">⚙️ Open Advanced LuCI Administration</a></div>
+    </footer>
+  </div>
+
+  <!-- Wi-Fi Scanner Modal -->
+  <div class="modal-backdrop" id="scanModal">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <div class="modal-title">Nearby Wi-Fi Networks</div>
+        <button class="close-btn" onclick="closeScanner()">✕</button>
+      </div>
+
+      <div id="scanLoading" style="text-align:center; padding:20px; color:var(--text-muted);">
+        Scanning 2.4 GHz airwaves...
+      </div>
+
+      <div class="wifi-list" id="scanResults" style="display:none;">
+        <!-- Injected via JS -->
+      </div>
+
+      <!-- Password Connect Form (Shown on click) -->
+      <div id="connectForm" style="display:none; flex-direction:column; gap:12px;">
+        <div style="font-size:0.95rem; font-weight:700;">Connect to: <span id="targetSsid" style="color:var(--accent);"></span></div>
+        <div class="input-group">
+          <label class="input-label">Wi-Fi Password</label>
+          <input type="password" id="targetKey" class="input-field" placeholder="Enter password (leave empty if open)">
+        </div>
+        <div style="display:flex; gap:10px; margin-top:6px;">
+          <button class="btn btn-primary" onclick="submitWifiConnect()">Connect Now</button>
+          <button class="btn btn-secondary" onclick="cancelWifiSelect()">Back to List</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    let currentData = null;
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.innerText = msg;
+      t.style.display = 'block';
+      setTimeout(() => { t.style.display = 'none'; }, 3500);
+    }
+
+    async function fetchStatus() {
+      try {
+        const res = await fetch('/cgi-bin/portal-api?action=status');
+        if (!res.ok) return;
+        const data = await res.json();
+        currentData = data;
+        renderStatus(data);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function renderStatus(data) {
+      // Mode Pill
+      const pill = document.getElementById('modePill');
+      const pillText = document.getElementById('modePillText');
+      pill.className = 'mode-pill ' + data.mode.toLowerCase();
+      if (data.mode === 'VPN') pillText.innerText = 'Mac Mini VPN';
+      else if (data.mode === 'TOR') pillText.innerText = 'Tor Gateway';
+      else pillText.innerText = 'Direct WAN';
+
+      // Mode Selection Cards
+      ['modeVpnCard', 'modeTorCard', 'modeNormalCard'].forEach(id => document.getElementById(id).classList.remove('active'));
+      if (data.mode === 'VPN') document.getElementById('modeVpnCard').classList.add('active');
+      else if (data.mode === 'TOR') document.getElementById('modeTorCard').classList.add('active');
+      else document.getElementById('modeNormalCard').classList.add('active');
+
+      // Upstream Wi-Fi
+      document.getElementById('upstreamSsid').innerText = data.upstream.ssid || 'Not Connected';
+      document.getElementById('upstreamIp').innerText = data.upstream.ip || 'No IP Assigned';
+      document.getElementById('upstreamSignal').innerText = data.upstream.signal ? ('📶 ' + data.upstream.signal + ' dBm') : 'No Signal';
+      const badge = document.getElementById('upstreamStatusBadge');
+      if (data.upstream.status === 'connected') {
+        badge.innerText = '● Connected';
+        badge.style.color = 'var(--success)';
+      } else {
+        badge.innerText = '● Disconnected';
+        badge.style.color = 'var(--danger)';
+      }
+
+      // WireGuard Stats
+      if (data.wireguard.up) {
+        document.getElementById('wgHandshake').innerText = data.wireguard.handshake;
+        document.getElementById('wgTransfer').innerText = data.wireguard.transfer;
+        document.getElementById('vpnStats').style.display = 'flex';
+      } else {
+        document.getElementById('vpnStats').style.display = 'none';
+      }
+
+      // Hotspot & Clients
+      document.getElementById('hotspotSsidName').innerText = data.hotspot.ssid;
+      const clients = data.hotspot.clients || [];
+      document.getElementById('clientCountBadge').innerText = clients.length + (clients.length === 1 ? ' Device' : ' Devices');
+      const clientList = document.getElementById('clientListContainer');
+      if (clients.length === 0) {
+        clientList.innerHTML = '<div style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding:8px;">No devices connected.</div>';
+      } else {
+        clientList.innerHTML = clients.map(c => `
+          <div class="client-item">
+            <div class="client-name">📱 ${c.name || 'Unnamed Device'}</div>
+            <div class="client-ip">${c.ip}</div>
+          </div>
+        `).join('');
+      }
+
+      // System stats
+      if (data.system) {
+        document.getElementById('sysStats').innerText = `Uptime: ${data.system.uptime} • Free RAM: ${data.system.mem_free_mb} MB`;
+      }
+    }
+
+    async function switchMode(mode) {
+      showToast('Switching to ' + mode.toUpperCase() + ' mode...');
+      try {
+        const res = await fetch('/cgi-bin/portal-api?action=set_mode&mode=' + mode, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          setTimeout(fetchStatus, 1500);
+        }
+      } catch (e) {
+        showToast('Failed to switch mode');
+      }
+    }
+
+    function openHotelLogin() {
+      // Opens neverssl.com which forces any captive portal login to trigger
+      window.open('http://neverssl.com', '_blank');
+    }
+
+    async function openScanner() {
+      document.getElementById('scanModal').classList.add('open');
+      document.getElementById('scanLoading').style.display = 'block';
+      document.getElementById('scanResults').style.display = 'none';
+      document.getElementById('connectForm').style.display = 'none';
+
+      try {
+        const res = await fetch('/cgi-bin/portal-api?action=scan');
+        const list = await res.json();
+        renderScanResults(list);
+      } catch (e) {
+        document.getElementById('scanLoading').innerText = 'Failed to scan networks.';
+      }
+    }
+
+    function renderScanResults(list) {
+      document.getElementById('scanLoading').style.display = 'none';
+      const container = document.getElementById('scanResults');
+      container.style.display = 'flex';
+
+      if (!list || list.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding:15px; color:var(--text-muted);">No networks found.</div>';
+        return;
+      }
+
+      // Sort by signal strength
+      list.sort((a, b) => parseInt(b.signal) - parseInt(a.signal));
+
+      container.innerHTML = list.map(item => `
+        <div class="scan-item" onclick="selectWifi('${encodeURIComponent(item.ssid)}')">
+          <div style="font-weight:600;">${item.ssid || '<i>Hidden SSID</i>'}</div>
+          <div class="scan-meta">
+            <span>${item.enc === 'Open' ? '🔓 Open' : '🔒 ' + item.enc}</span>
+            <span>📶 ${item.signal} dBm</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    let selectedSsid = '';
+    function selectWifi(encodedSsid) {
+      selectedSsid = decodeURIComponent(encodedSsid);
+      document.getElementById('targetSsid').innerText = selectedSsid;
+      document.getElementById('targetKey').value = '';
+      document.getElementById('scanResults').style.display = 'none';
+      document.getElementById('connectForm').style.display = 'flex';
+      document.getElementById('targetKey').focus();
+    }
+
+    function cancelWifiSelect() {
+      document.getElementById('connectForm').style.display = 'none';
+      document.getElementById('scanResults').style.display = 'flex';
+    }
+
+    function closeScanner() {
+      document.getElementById('scanModal').classList.remove('open');
+    }
+
+    async function submitWifiConnect() {
+      const key = document.getElementById('targetKey').value;
+      closeScanner();
+      showToast('Connecting to ' + selectedSsid + '...');
+
+      try {
+        const url = '/cgi-bin/portal-api?action=connect_wifi&ssid=' + encodeURIComponent(selectedSsid) + '&key=' + encodeURIComponent(key);
+        const res = await fetch(url, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          showToast('Associating with Wi-Fi... Please wait ~10s');
+          setTimeout(fetchStatus, 8000);
+        }
+      } catch (e) {
+        showToast('Connection request sent');
+      }
+    }
+
+    // Initial fetch and auto-poll
+    fetchStatus();
+    setInterval(fetchStatus, 4000);
+  </script>
+</body>
+</html>

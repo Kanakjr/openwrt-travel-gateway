@@ -1,0 +1,197 @@
+#!/bin/sh
+# ==============================================================================
+# OpenWrt Travel Gateway - Lightweight Backend CGI API
+# Supports: Status, Wi-Fi Scan, Wi-Fi Join, Mode Switch, Hotspot Config
+# ==============================================================================
+
+echo "Content-Type: application/json"
+echo "Access-Control-Allow-Origin: *"
+echo "Cache-Control: no-cache, no-store, must-revalidate"
+echo ""
+
+get_param() {
+    raw=$(echo "$QUERY_STRING" | tr '&' '\n' | grep "^$1=" | cut -d'=' -f2- | head -n1)
+    [ -n "$raw" ] && printf '%b\n' "$(echo "$raw" | sed 's/+/ /g; s/%/\\x/g')"
+}
+
+ACTION=$(get_param action)
+[ -z "$ACTION" ] && ACTION="status"
+
+case "$ACTION" in
+    status)
+        MODE=$(cat /etc/hotspot_mode 2>/dev/null || echo "NORMAL")
+        UPSTREAM_SSID=$(uci get wireless.wifinet2.ssid 2>/dev/null || echo "")
+        UPSTREAM_IP=$(ip -4 addr show dev phy1-sta0 2>/dev/null | grep inet | awk '{print $2}' | cut -d/ -f1)
+        if iw dev phy1-sta0 link 2>/dev/null | grep -q 'Connected'; then
+            UPSTREAM_STATUS="connected"
+            UPSTREAM_SIG=$(iw dev phy1-sta0 link 2>/dev/null | grep 'signal:' | awk '{print $2}')
+        else
+            UPSTREAM_STATUS="disconnected"
+            UPSTREAM_SIG="0"
+        fi
+        HOTSPOT_SSID=$(uci get wireless.default_radio0.ssid 2>/dev/null || echo "OpenWrt")
+
+        WG_UP="false"
+        WG_HANDSHAKE="Never"
+        WG_TRANSFER="0 / 0"
+        if ip link show wg0 >/dev/null 2>&1; then
+            WG_UP="true"
+            if [ -x /tmp/wg_run/usr/bin/wg ]; then
+                WG_HS_RAW=$(LD_LIBRARY_PATH=/tmp/wg_run/usr/lib /tmp/wg_run/usr/bin/wg show wg0 latest-handshakes 2>/dev/null | awk '{print $2}')
+                if [ -n "$WG_HS_RAW" ] && [ "$WG_HS_RAW" -gt 0 ] 2>/dev/null; then
+                    NOW=$(date +%s)
+                    DIFF=$((NOW - WG_HS_RAW))
+                    if [ $DIFF -lt 60 ]; then
+                        WG_HANDSHAKE="${DIFF}s ago"
+                    elif [ $DIFF -lt 3600 ]; then
+                        WG_HANDSHAKE="$((DIFF / 60))m ago"
+                    else
+                        WG_HANDSHAKE="$((DIFF / 3600))h ago"
+                    fi
+                fi
+                WG_TRANSFER=$(LD_LIBRARY_PATH=/tmp/wg_run/usr/lib /tmp/wg_run/usr/bin/wg show wg0 transfer 2>/dev/null | awk '
+                function human(b) {
+                    if (b > 1073741824) return sprintf("%.1f GB", b/1073741824);
+                    if (b > 1048576) return sprintf("%.1f MB", b/1048576);
+                    if (b > 1024) return sprintf("%.1f KB", b/1024);
+                    return sprintf("%d B", b);
+                }
+                { printf "%s in / %s out", human($2), human($3) }')
+            fi
+        fi
+
+        CLIENTS_JSON=$(awk 'BEGIN{printf "["; f=1} {if(!f) printf ","; printf "{\"ip\":\"%s\",\"mac\":\"%s\",\"name\":\"%s\"}", $3, $2, $4; f=0} END{printf "]"}' /tmp/dhcp.leases 2>/dev/null)
+        [ -z "$CLIENTS_JSON" ] && CLIENTS_JSON='[]'
+
+        UPTIME_STR=$(uptime | awk -F', ' '{print $1}' | sed 's/^[ \t]*//')
+        MEM_FREE=$(free -m 2>/dev/null | awk '/Mem:/ {print $4}')
+
+        cat << EOF
+{
+  "mode": "$MODE",
+  "upstream": {
+    "ssid": "$UPSTREAM_SSID",
+    "ip": "$UPSTREAM_IP",
+    "status": "$UPSTREAM_STATUS",
+    "signal": "$UPSTREAM_SIG"
+  },
+  "hotspot": {
+    "ssid": "$HOTSPOT_SSID",
+    "clients": $CLIENTS_JSON
+  },
+  "wireguard": {
+    "up": $WG_UP,
+    "handshake": "$WG_HANDSHAKE",
+    "transfer": "$WG_TRANSFER"
+  },
+  "system": {
+    "uptime": "$UPTIME_STR",
+    "mem_free_mb": "$MEM_FREE"
+  }
+}
+EOF
+        ;;
+
+    scan)
+        iwinfo phy1-sta0 scan 2>/dev/null | awk '
+        BEGIN { printf "["; first=1 }
+        /Cell [0-9]+/ {
+            if (ssid != "") {
+                if (!first) printf ",";
+                printf "{\"ssid\":\"%s\",\"signal\":\"%s\",\"quality\":\"%s\",\"enc\":\"%s\",\"channel\":\"%s\"}", ssid, signal, quality, enc, channel;
+                first=0;
+            }
+            ssid=""; signal="0"; quality="0/70"; enc="Open"; channel=""
+        }
+        /ESSID:/ {
+            s = index($0, "ESSID: \"");
+            if (s > 0) {
+                rest = substr($0, s + 8);
+                e = index(rest, "\"");
+                if (e > 0) ssid = substr(rest, 1, e - 1);
+            }
+        }
+        /Signal:/ {
+            for (i=1; i<=NF; i++) {
+                if ($i == "Signal:") signal = $(i+1);
+                if ($i == "Quality:") quality = $(i+1);
+            }
+        }
+        /Encryption:/ {
+            if ($0 ~ /none/) enc = "Open";
+            else if ($0 ~ /WPA3/) enc = "WPA3";
+            else if ($0 ~ /WPA2/) enc = "WPA2";
+            else if ($0 ~ /WPA/) enc = "WPA";
+            else enc = "Encrypted";
+        }
+        /Channel:/ {
+            if (channel == "") {
+                for (i=1; i<=NF; i++) {
+                    if ($i == "Channel:") channel = $(i+1);
+                }
+            }
+        }
+        END {
+            if (ssid != "") {
+                if (!first) printf ",";
+                printf "{\"ssid\":\"%s\",\"signal\":\"%s\",\"quality\":\"%s\",\"enc\":\"%s\",\"channel\":\"%s\"}", ssid, signal, quality, enc, channel;
+            }
+            printf "]\n";
+        }'
+        ;;
+
+    connect_wifi)
+        SSID=$(get_param ssid)
+        KEY=$(get_param key)
+        if [ -z "$SSID" ]; then
+            echo '{"success": false, "error": "SSID is required"}'
+            exit 0
+        fi
+
+        uci set wireless.wifinet2.ssid="$SSID"
+        if [ -n "$KEY" ]; then
+            uci set wireless.wifinet2.encryption='psk2'
+            uci set wireless.wifinet2.key="$KEY"
+        else
+            uci set wireless.wifinet2.encryption='none'
+            uci delete wireless.wifinet2.key 2>/dev/null || true
+        fi
+        uci commit wireless
+        (sleep 1; wifi reload) >/dev/null 2>&1 &
+        echo "{\"success\": true, \"message\": \"Connecting to $SSID...\"}"
+        ;;
+
+    set_mode)
+        MODE=$(get_param mode)
+        case "$MODE" in
+            vpn|tor|normal)
+                (/usr/bin/hotspot-mode "$MODE") >/dev/null 2>&1 &
+                echo "{\"success\": true, \"mode\": \"$MODE\"}"
+                ;;
+            *)
+                echo '{"success": false, "error": "Invalid mode"}'
+                ;;
+        esac
+        ;;
+
+    set_hotspot)
+        SSID=$(get_param ssid)
+        KEY=$(get_param key)
+        if [ -n "$SSID" ]; then
+            uci set wireless.default_radio0.ssid="$SSID"
+            if [ -n "$KEY" ] && [ ${#KEY} -ge 8 ]; then
+                uci set wireless.default_radio0.key="$KEY"
+                uci set wireless.default_radio0.encryption='psk2'
+            fi
+            uci commit wireless
+            (sleep 1; wifi reload) >/dev/null 2>&1 &
+            echo '{"success": true, "message": "Hotspot settings updated."}'
+        else
+            echo '{"success": false, "error": "Hotspot SSID cannot be empty"}'
+        fi
+        ;;
+
+    *)
+        echo '{"error": "Unknown action"}'
+        ;;
+esac

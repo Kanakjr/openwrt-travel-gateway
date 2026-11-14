@@ -1,0 +1,19 @@
+# Local environment & secrets
+*.key
+*.priv
+*.pub
+*.env
+*.pem
+*.token
+*.cert
+
+# Temporary and runtime files
+/tmp/
+*.log
+.DS_Store
+Thumbs.db
+
+# Backups
+*.bak
+*.swp
+*~
