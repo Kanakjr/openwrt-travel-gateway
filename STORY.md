@@ -74,7 +74,7 @@ I booted up the legacy MacBook, plugged the Ethernet cable directly into the rou
 
 With OpenWrt installed, I faced the primary networking challenge:
 
-**Home ISPs in India (like Airtel Broadband) place all residential IPv4 connections behind Carrier-Grade NAT (CGNAT).** 
+**Most residential ISPs place home IPv4 connections behind Carrier-Grade NAT (CGNAT).** 
 
 Under CGNAT, your home router does not receive a public IPv4 address. You cannot open inbound ports, port forward, or host a traditional WireGuard server on IPv4 without an external relay.
 
@@ -128,16 +128,16 @@ No public IPv6. Why?
 
 I checked the home master router: a TP-Link Deco M4 mesh system. By default, **IPv6 was turned off**.
 
-I opened the TP-Link Deco mobile app and enabled IPv6. Because Airtel operates over PPPoE, I configured:
+I opened the TP-Link Deco mobile app and enabled IPv6. Because my fiber connection operates over PPPoE, I configured:
 - **Connection Type:** PPPoE
 - **Same session as IPv4 connection:** ON *(shares active PPPoE credentials)*
 - **Prefix Delegation:** ON (Auto SLAAC)
 
 Within 15 seconds, the Mac Mini renegotiated with the router. I ran `ifconfig en0`:
 ```
-inet6 2401:xxxx:xxxx:xxxx::1000 prefixlen 64 dynamic
+inet6 2001:db8:xxxx:xxxx::1000 prefixlen 64 dynamic
 ```
-A globally routable, public IPv6 address straight from Airtel's fiber backbone! I tested external connectivity:
+A globally routable, public IPv6 address straight from the fiber backbone! I tested external connectivity:
 ```bash
 $ ping6 2001:4860:4860::8888
 3 packets transmitted, 3 received, 0% packet loss, avg 12.0 ms
@@ -152,7 +152,7 @@ Instead of running bloated userspace Go binaries, I could use **WireGuard direct
 - **Speed:** Full wire-rate line speed with native ChaCha20-Poly1305 hardware instructions.
 
 ```
-[ Travel Router ] ── (Direct UDP [2401:4900:...]:51820) ──> [ Home Mac Mini ] ──> [ Residential Airtel IP ]
+[ Travel Router ] ── (Direct UDP [2001:db8:...]:51820) ──> [ Home Mac Mini ] ──> [ Residential Home IP ]
 ```
 
 I brought up the tunnel:
@@ -189,7 +189,7 @@ I needed a **mobile-first, zero-dependency, ultra-lightweight Travel Portal**.
 ├──────────────────────────────────────────────┤
 │ ROUTING MODE                                 │
 │  (*) 🏠 Home Mac Mini VPN                    │
-│      Airtel Residential IP • 12s ago         │
+│      Residential Home IP • 12s ago           │
 │  ( ) 🧅 Tor Anonymous Gateway                │
 │  ( ) 🌐 Direct Hotel WAN (Bypass)            │
 ├──────────────────────────────────────────────┤
@@ -237,7 +237,7 @@ Whenever I check into a hotel:
 1. I plug it into any USB power brick.
 2. I connect my phone to `OpenWrt`.
 3. The setup notification pops up. I tap **Scan & Join Wi-Fi**, select the hotel network, and tap **Home Mac Mini VPN**.
-4. My work laptop, phone, and tablet instantly have encrypted, full-speed internet that shows my home residential Airtel IP address.
+4. My work laptop, phone, and tablet instantly have encrypted, full-speed internet that shows my home residential IP address.
 
 No corporate IT alarms. No sketchy hotel captive portal eavesdropping. No commercial VPN blocks.
 

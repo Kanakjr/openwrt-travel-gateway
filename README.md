@@ -37,7 +37,7 @@ When you travel as a software engineer or remote worker, you run into two consta
            │ Direct Kernel WireGuard Tunnel (`wireguard.ko`) over IPv6
            │ (Bypasses ISP CGNAT naturally with line-rate wire speed)
            ▼
-[ Home Host / Mac Mini ] ── (Residential Airtel Fiber Connection)
+[ Home Host / Mac Mini ] ── (Residential Fiber Broadband Connection)
            │
            ▼
   [ Public Internet ] ── (Sees your home residential IP everywhere!)
