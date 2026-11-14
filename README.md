@@ -7,6 +7,10 @@
 [![Zero-Dependency UI](https://img.shields.io/badge/Web%20UI-5.6%20KB%20Gzipped-3B82F6)](router/www/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+<p align="center">
+  <img src="assets/portal-mobile-dashboard.jpg" width="360" alt="Travel Gateway Mobile Dashboard" style="border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);" />
+</p>
+
 ---
 
 ## 📌 The Problem: Remote Work vs. Real World
@@ -48,7 +52,7 @@ When you travel as a software engineer or remote worker, you run into two consta
   - 🌐 **Direct Hotel WAN:** Standard repeater mode.
 - **📱 RFC Captive Portal Detection:** When you arrive at a hotel without internet, Android and iOS automatically display the "Sign-in to network" notification, opening the portal directly in the system webview.
 - **⚡ Zero-Dependency 5.6 KB UI:** Single-file HTML/CSS/JS gzipped to 5.6 KB. Loads in under 50 ms directly from RAM.
-- **💻 Ultra-Constrained Hardware Ready:** Operates seamlessly on 128 MB RAM MIPS routers with ~0 MB userspace memory overhead.
+- **💻 Ultra-Constrained Hardware Ready:** Built and tested on real-world legacy hardware (TP-Link Archer C6 v2, Qualcomm Atheros QCA956X, 128 MB RAM, 384 KiB overlay flash). Operates seamlessly with ~0 MB userspace memory overhead.
 
 ---
 

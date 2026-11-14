@@ -20,7 +20,7 @@ Most people would toss it into an e-waste bin or stash it in the attic. But as a
 
 I wanted a single, pocket-sized box. Whenever I arrive at a hotel anywhere in the world, I power it on. It joins the hotel Wi-Fi, creates a private 5 GHz hotspot for all my devices, and **transparently tunnels every byte of traffic back through my home Mac Mini**, making all my devices appear as if I were sitting at my desk at home.
 
-The discarded router in my drawer was about to get a second life.
+The router in question was an old **TP-Link Archer C6 v2 (Qualcomm Atheros QCA956X)** with 128 MB RAM and an SPI flash overlay of just 384 KiB. The discarded router in my drawer was about to get a second life.
 
 ---
 
@@ -92,7 +92,13 @@ When I deployed this setup onto the OpenWrt router, two fatal flaws shattered th
    ```
    **The router froze, killed the process, and dropped all connections.**
 
-To make matters worse, the router's flash overlay only had **~84 KB of free persistent disk space**. Massive userspace binaries were completely out of the question.
+To make matters worse, the router's flash overlay only had **~56 KB to 84 KB of free persistent disk space** (328 KiB out of 384 KiB used). Massive userspace binaries were completely out of the question.
+
+<p align="center">
+  <img src="assets/openwrt-system-specs.png" width="340" alt="OpenWrt System Specifications & Storage Constraints" />
+  <br>
+  <em>Figure 1: LuCI system status on the TP-Link Archer C6 v2 showing 128 MB RAM and the razor-thin 384 KiB overlay flash space.</em>
+</p>
 
 ---
 
@@ -146,6 +152,12 @@ interface: wg0
 ```
 **Zero OOM errors. Zero dropped packets. Pure line-rate residential internet.**
 
+<p align="center">
+  <img src="assets/openwrt-network-status.jpg" width="340" alt="OpenWrt Dual-Stack Upstream Network Status" />
+  <br>
+  <em>Figure 3: OpenWrt upstream network status confirming active dual-stack IPv4/IPv6 client associations and DHCP leases.</em>
+</p>
+
 ---
 
 ## 🎨 Act IV: Building the 5.6 KB Travel Gateway UI
@@ -175,6 +187,12 @@ I needed a **mobile-first, zero-dependency, ultra-lightweight Travel Portal**.
 │  💻 MacBook-Work  •  192.168.1.225           │
 └──────────────────────────────────────────────┘
 ```
+
+<p align="center">
+  <img src="assets/portal-mobile-dashboard.jpg" width="340" alt="Travel Gateway Mobile Dashboard Running Live" />
+  <br>
+  <em>Figure 2: The zero-dependency Travel Gateway portal running live on mobile, managing upstream connection, WireGuard tunnel, and connected devices.</em>
+</p>
 
 ### The Constraints:
 - Remember: the router only had **~60 KB of free flash overlay**!
