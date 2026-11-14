@@ -22,6 +22,12 @@ I wanted a single, pocket-sized box. Whenever I arrive at a hotel anywhere in th
 
 The router in question was an old **TP-Link Archer C6 v2 (Qualcomm Atheros QCA956X)** with 128 MB RAM and an SPI flash overlay of just 384 KiB. The discarded router in my drawer was about to get a second life.
 
+<p align="center">
+  <img src="assets/hero-router.jpg" width="420" alt="The resurrected TP-Link Archer C6 Travel Gateway" />
+  <br>
+  <em>The repurposed TP-Link Archer C6 v2—resurrected from a desk drawer into a dedicated travel gateway.</em>
+</p>
+
 ---
 
 ## 💻 Act I: The LAN Port Dilemma & The Old MacBook Hack

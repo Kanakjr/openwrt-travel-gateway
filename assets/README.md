@@ -2,6 +2,7 @@
 
 All assets recorded during development and build are documented here:
 
+- `hero-router.jpg`: Hero photo of the TP-Link Archer C6 v2 router in hand over the workbench.
 - `build-setup-video.mp4`: Complete video showing the dual-MacBook setup (legacy MacBook with built-in Ethernet alongside modern MacBook) and OpenWrt installation.
 - `macbook-lan-hack.jpg`: Still frame showing the unibody MacBook bridging physical RJ45 Gigabit Ethernet to the TP-Link Archer C6 router.
 - `hardware-setup.jpg`: Still frame showing the desk setup, cabling, and router during firmware bootstrap.

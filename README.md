@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 <p align="center">
-  <img src="assets/portal-mobile-dashboard.jpg" width="360" alt="Travel Gateway Mobile Dashboard" style="border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);" />
+  <img src="assets/hero-router.jpg" width="460" alt="OpenWrt Travel Gateway Hardware" style="border-radius: 12px; box-shadow: 0 4px 25px rgba(0,0,0,0.4);" />
 </p>
 
 ---
@@ -53,6 +53,12 @@ When you travel as a software engineer or remote worker, you run into two consta
 - **📱 RFC Captive Portal Detection:** When you arrive at a hotel without internet, Android and iOS automatically display the "Sign-in to network" notification, opening the portal directly in the system webview.
 - **⚡ Zero-Dependency 5.6 KB UI:** Single-file HTML/CSS/JS gzipped to 5.6 KB. Loads in under 50 ms directly from RAM.
 - **💻 Ultra-Constrained Hardware Ready:** Built and tested on real-world legacy hardware (TP-Link Archer C6 v2, Qualcomm Atheros QCA956X, 128 MB RAM, 384 KiB overlay flash). Operates seamlessly with ~0 MB userspace memory overhead.
+
+<p align="center">
+  <img src="assets/portal-mobile-dashboard.jpg" width="340" alt="Travel Gateway Mobile Dashboard" style="border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);" />
+  <br>
+  <em>Mobile portal running live at http://travel.lan for 1-tap gateway switching and nearby Wi-Fi joining.</em>
+</p>
 
 ---
 
